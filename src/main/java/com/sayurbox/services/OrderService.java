@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -39,15 +41,34 @@ public class OrderService {
         //create order
         Order o = createActiveOrder(userId);
 
+        //sort the cart products by product id to avoid deadlock
+        Collections.sort(cartProducts, (cp1,cp2)-> cp1.getProduct().getId() - cp2.getProduct().getId());
+
+        //random transaction id for debugging concurrent transactions
+        int transactionId = cartProducts.hashCode();//(int) (Math.random()*100000);
+
+        //System.out.println("============Transaction start============"+transactionId);
+
         for (CartProduct cp : cartProducts) {
+            //System.out.println("Cartproduct: "+cp.getId()+"    "+transactionId);
             int affectedRows = inventoryService.reduceInventory(cp.getProduct().getId(), cp.getQuantity());
 
             if (affectedRows == 0) {
+                //System.out.println("=========Transaction will be rolledback========="+transactionId);
                 throw new NotEnoughQuantityException("Product quantity of id " + cp.getProduct().getId() + " is not available");
             }
 
             createOrderProduct(o, cp);
+
+//            System.out.println("Reduced quantity for product id "+cp.getProduct().getId()+"     "+transactionId);
+//
+//            try {
+//                //Increasing lock acquisition time for transaction
+//                Thread.sleep(7000);
+//            } catch (InterruptedException e) {  }
         }
+
+        //System.out.println("============Transaction end============"+transactionId);
 
         return o.getId();
     }
