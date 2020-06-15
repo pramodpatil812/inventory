@@ -17,3 +17,6 @@ Install ```git, maven, java(>=8) and mysql-server and postman```.
 
 #### Running only unit test cases
 ```mvn test```
+
+#### Assumptions
+For simplicity each request is passed user id in the header. For production based system signed jwt token will be useful in user validation.
